@@ -31,8 +31,10 @@ public class Inventory {
     }
 
     public int getItemQuantity(String itemName) {
-        return items.getOrDefault(itemName, 0);
+        return items.getOrDefault(itemName, 0); // Ürün miktarını döndür
     }
+
+
 
     public Map<String, Integer> getItems() {
         return items;
@@ -59,6 +61,13 @@ public class Inventory {
             case "Egg" -> 20;
             case "Milk" -> 50;
             case "Wool" -> 100;
+            case "Cheese" -> 300;
+            case "Cake" -> 500;
+            case "Ketchup" -> 300;
+            case "Popcorn" -> 250;
+            case "Chips" -> 350;
+            case "Bread" -> 200;
+            case "Cloth" -> 400;
             default -> 0;
         };
     }

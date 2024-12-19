@@ -22,6 +22,7 @@ public class FarmGrid extends JPanel implements KeyListener {
     private Market market;
     private Map<String, Integer> barnAnimals; // Ahırdaki hayvanlar
     private ScheduledExecutorService scheduler;
+    private Factory factory;
 
     // Görseller
     private Image emptyFieldImage;
@@ -32,6 +33,8 @@ public class FarmGrid extends JPanel implements KeyListener {
     private Image storageIcon;
     private Image grassTileImage; // Yeni çimen dokusu
     private Image farmerIcon;
+    private Image factoryIcon;
+
 
     public FarmGrid() {
         tiles = new Tile[ROWS][COLS];
@@ -40,6 +43,7 @@ public class FarmGrid extends JPanel implements KeyListener {
         market = new Market();
         barnAnimals = new HashMap<>();
         scheduler = Executors.newScheduledThreadPool(1);
+        factory = new Factory(inventory);
 
         // Görselleri yükle
         try {
@@ -55,6 +59,7 @@ public class FarmGrid extends JPanel implements KeyListener {
             readyImages.put("Tomato", ImageIO.read(new File("resources/images/tomato_ready.png")));
             readyImages.put("Potato", ImageIO.read(new File("resources/images/potato_ready.png")));
 
+            factoryIcon = ImageIO.read(new File("resources/images/factoryIcon.png"));
             marketIcon = ImageIO.read(new File("resources/images/market.png"));
             barnIcon = ImageIO.read(new File("resources/images/barn.png"));
             storageIcon = ImageIO.read(new File("resources/images/storage.png"));
@@ -92,6 +97,7 @@ public class FarmGrid extends JPanel implements KeyListener {
         tiles[4][8] = new Tile("market", marketIcon, null, null);
         tiles[3][6] = new Tile("storage", storageIcon, null, null);
         tiles[2][10] = new Tile("barn", barnIcon, null, null);
+        tiles[5][5] = new Tile("factory", factoryIcon, null, null); // Fabrika
     }
 
 
@@ -130,8 +136,50 @@ public class FarmGrid extends JPanel implements KeyListener {
             case "market" -> market.openMarketDialog((JFrame) SwingUtilities.getWindowAncestor(this), inventory, barnAnimals);
             case "storage" -> showInventory();
             case "barn" -> showBarn();
+            case "factory" -> openFactoryDialog(); // Fabrika kutucuğuna özel işlem
         }
     }
+
+    private void openFactoryDialog() {
+        JDialog factoryDialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Fabrika", true);
+        factoryDialog.setSize(400, 400);
+        factoryDialog.setLayout(new GridLayout(0, 2, 10, 10));
+
+        for (String rawMaterial : factory.getProductionRules().keySet()) {
+            String product = factory.getProductionRules().get(rawMaterial); // Nihai ürün
+            int requiredQuantity = factory.getRequiredQuantity(rawMaterial); // Gerekli miktar
+            String materialName = rawMaterial; // Ham madde ismi
+            int currentQuantity = inventory.getItemQuantity(materialName); // Mevcut miktar
+
+            // Üretim butonu
+            JButton produceButton = new JButton("Üret: " + product);
+            produceButton.addActionListener(e -> {
+                if (factory.startProduction(rawMaterial)) {
+                    JOptionPane.showMessageDialog(factoryDialog, product + " üretiliyor!");
+                } else {
+                    JOptionPane.showMessageDialog(factoryDialog, rawMaterial + " üretilemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+
+            // Bilgilendirme etiketi (örneğin: "Gerekli: 5 Milk, Mevcut: 3")
+            JLabel infoLabel = new JLabel("Gerekli: " + requiredQuantity + " " + materialName + ", Mevcut: " + currentQuantity);
+            infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+            // Buton ve bilgilendirici etiketi pencereye ekle
+            factoryDialog.add(produceButton);
+            factoryDialog.add(infoLabel);
+        }
+
+        // Kapat butonu
+        JButton closeButton = new JButton("Kapat");
+        closeButton.addActionListener(e -> factoryDialog.dispose());
+        factoryDialog.add(closeButton);
+
+        factoryDialog.setLocationRelativeTo(this); // Pencereyi ortala
+        factoryDialog.setVisible(true); // Görünür yap
+    }
+
+
 
     private void plantSeed() {
         Tile currentTile = tiles[player.getY()][player.getX()];
