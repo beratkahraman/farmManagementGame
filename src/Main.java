@@ -2,18 +2,23 @@ import javax.swing.*;
 
 public class Main {
     public static void main(String[] args) {
-        JFrame frame = new JFrame("Çiftlik Yönetimi Oyunu");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        SwingUtilities.invokeLater(() -> new LoginScreen()); // Giriş ekranını başlat
+    }
 
-        FarmGrid farmGrid = new FarmGrid();
-        JScrollPane scrollPane = new JScrollPane(farmGrid);
-        scrollPane.setPreferredSize(new java.awt.Dimension(800, 600));
+    public void startGame() {
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("Çiftlik Yönetimi Oyunu");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setResizable(false);
 
-        frame.add(scrollPane);
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+            FarmGrid farmGrid = new FarmGrid();
+            frame.add(farmGrid);
 
-        farmGrid.requestFocusInWindow();
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+
+            farmGrid.requestFocusInWindow();
+        });
     }
 }
