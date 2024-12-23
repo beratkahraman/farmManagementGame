@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +35,7 @@ public class FarmGrid extends JPanel implements KeyListener {
     private Image grassTileImage; // Yeni çimen dokusu
     private Image farmerIcon;
     private Image factoryIcon;
+    private Image mineIcon;
 
 
     public FarmGrid() {
@@ -63,6 +65,7 @@ public class FarmGrid extends JPanel implements KeyListener {
             marketIcon = ImageIO.read(new File("resources/images/market.png"));
             barnIcon = ImageIO.read(new File("resources/images/barn.png"));
             storageIcon = ImageIO.read(new File("resources/images/storage.png"));
+            mineIcon = ImageIO.read(new File("resources/images/mineIcon.png"));
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("Görseller yüklenemedi!");
@@ -98,6 +101,7 @@ public class FarmGrid extends JPanel implements KeyListener {
         tiles[3][6] = new Tile("storage", storageIcon, null, null);
         tiles[2][10] = new Tile("barn", barnIcon, null, null);
         tiles[5][5] = new Tile("factory", factoryIcon, null, null); // Fabrika
+        tiles[6][6] = new Tile("mine", mineIcon, null, null); // 6x6 konumuna madeni ekler
     }
 
 
@@ -130,6 +134,29 @@ public class FarmGrid extends JPanel implements KeyListener {
         }
     }
 
+    private boolean mineUnlocked = false; // Maden kilit durumu
+    private boolean mineReady = false; // Madenden ürün toplanabilir mi?
+    private Timer mineTimer;           // Maden zamanlayıcısı
+
+    private void startMineProduction() {
+        if (mineTimer != null && mineTimer.isRunning()) {
+            return; // Zamanlayıcı zaten çalışıyorsa yeniden başlatma
+        }
+
+        Random random = new Random();
+        int productionTime = (random.nextInt(11) + 10) * 1000; // 10-20 saniye arası rastgele üretim süresi
+
+        mineTimer = new Timer(productionTime, e -> {
+            mineReady = true; // Üretim tamamlandı
+            System.out.println("Maden üretimi tamamlandı! Ürünler hazır.");
+            mineTimer.stop();
+        });
+
+        mineReady = false; // Üretim sırasında ürün toplanamaz
+        mineTimer.start();
+    }
+
+
     private void handleSpecialTiles() {
         Tile currentTile = tiles[player.getY()][player.getX()];
         switch (currentTile.getType()) {
@@ -137,6 +164,7 @@ public class FarmGrid extends JPanel implements KeyListener {
             case "storage" -> showInventory();
             case "barn" -> showBarn();
             case "factory" -> openFactoryDialog(); // Fabrika kutucuğuna özel işlem
+            case "mine" -> openMineDialog();
         }
     }
 
@@ -170,6 +198,7 @@ public class FarmGrid extends JPanel implements KeyListener {
             factoryDialog.add(infoLabel);
         }
 
+
         // Kapat butonu
         JButton closeButton = new JButton("Kapat");
         closeButton.addActionListener(e -> factoryDialog.dispose());
@@ -178,6 +207,79 @@ public class FarmGrid extends JPanel implements KeyListener {
         factoryDialog.setLocationRelativeTo(this); // Pencereyi ortala
         factoryDialog.setVisible(true); // Görünür yap
     }
+
+    private void openMineDialog() {
+        JDialog mineDialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Maden", true);
+        mineDialog.setSize(400, 200);
+        mineDialog.setLayout(new BorderLayout());
+
+        if (!mineUnlocked) {
+            // Kilitliyken
+            JLabel infoLabel = new JLabel("Maden kilitli. Açmak için 2000 TL ödemelisiniz.");
+            infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            mineDialog.add(infoLabel, BorderLayout.CENTER);
+
+            JButton unlockButton = new JButton("Madeni Aç (2000 TL)");
+            unlockButton.addActionListener(e -> {
+                if (inventory.getMoney() >= 2000) {
+                    inventory.decreaseMoney(2000); // 2000 TL kes
+                    mineUnlocked = true;
+                    JOptionPane.showMessageDialog(mineDialog, "Maden açıldı! Üretim süreci başladı.");
+                    startMineProduction(); // Üretim sürecini başlat
+                    mineDialog.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(mineDialog, "Yeterli paranız yok!", "Hata", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+            mineDialog.add(unlockButton, BorderLayout.SOUTH);
+        } else {
+            // Açıkken
+            JLabel infoLabel = new JLabel(mineReady ? "Ürünler hazır! Toplayabilirsiniz." : "Maden çalışıyor... Lütfen bekleyin.");
+            infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            mineDialog.add(infoLabel, BorderLayout.CENTER);
+
+            JButton collectButton = new JButton("Üretimi Topla");
+            collectButton.setEnabled(mineReady); // Üretim hazır değilse butonu devre dışı bırak
+            collectButton.addActionListener(e -> {
+                if (mineReady) {
+                    generateRandomOre(); // Ürünleri oluştur
+                    JOptionPane.showMessageDialog(mineDialog, "Ürünler toplandı ve depoya eklendi!");
+                    startMineProduction(); // Yeni üretim döngüsünü başlat
+                    mineDialog.dispose();
+                }
+            });
+            mineDialog.add(collectButton, BorderLayout.SOUTH);
+        }
+
+        mineDialog.setLocationRelativeTo(this);
+        mineDialog.setVisible(true);
+    }
+
+
+    private void generateRandomOre() {
+        String[] ores = {"Iron", "Gold", "Diamond", "Coal", "Copper"};
+        int[] probabilities = {50, 25, 10, 10, 5}; // Yüzdelik olasılıklar
+
+        Random random = new Random();
+        int chance = random.nextInt(100);
+
+        String selectedOre = null;
+        int cumulativeProbability = 0;
+        for (int i = 0; i < ores.length; i++) {
+            cumulativeProbability += probabilities[i];
+            if (chance < cumulativeProbability) {
+                selectedOre = ores[i];
+                break;
+            }
+        }
+
+        if (selectedOre != null) {
+            inventory.addItem(selectedOre, random.nextInt(3) + 1); // 1-3 adet ürün
+            System.out.println(selectedOre + " üretildi ve depoya eklendi!");
+        }
+    }
+
+
 
 
 

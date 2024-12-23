@@ -68,6 +68,11 @@ public class Inventory {
             case "Chips" -> 350;
             case "Bread" -> 200;
             case "Cloth" -> 400;
+            case "Iron" -> 50;      // Yeni
+            case "Gold" -> 200;     // Yeni
+            case "Diamond" -> 500;  // Yeni
+            case "Coal" -> 30;      // Yeni
+            case "Copper" -> 40;    // Yeni
             default -> 0;
         };
     }
